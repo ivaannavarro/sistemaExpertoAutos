@@ -3,7 +3,7 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
-
+#REGLAS PARA EL DIAGNOSTICO DE FALLAS, esto debe ser una base de datos
 REGLAS = [
     {
         "sintomas": ["Ruido Extraño"],
