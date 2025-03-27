@@ -1,0 +1,1 @@
+para correr el programa solo basta con instalar las dependencias y ejecutar NPM START, se correrá tanto como el backend como el frontend

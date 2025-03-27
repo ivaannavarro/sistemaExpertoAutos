@@ -1,0 +1,73 @@
+/* Contenedor principal */
+.registros-container {
+    margin: 20px auto;
+    padding: 20px;
+    max-width: 90%;
+    background-color: #1e1e1e; /* Fondo oscuro */
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    color: #f5f5f5; /* Texto claro */
+}
+
+/* Título */
+.registros-titulo {
+    text-align: center;
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffffff;
+    margin-bottom: 20px;
+}
+
+/* Contenedor de la tabla */
+.tabla-contenedor {
+    overflow-x: auto;
+}
+
+/* Tabla */
+.tabla-registros {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    color: #f5f5f5; /* Texto claro */
+}
+
+/* Encabezado de la tabla */
+.tabla-encabezado {
+    background-color: #333333; /* Fondo más oscuro */
+    color: #00d1b2; /* Texto con color destacado */
+    text-align: left;
+    padding: 10px;
+    border-bottom: 2px solid #444444;
+}
+
+/* Filas alternadas */
+.fila-par {
+    background-color: #2a2a2a; /* Fondo ligeramente más claro */
+}
+
+.fila-impar {
+    background-color: #1e1e1e; /* Fondo oscuro */
+}
+
+/* Celdas */
+.tabla-celda {
+    padding: 10px;
+    border-bottom: 1px solid #444444;
+}
+
+/* Hover en las filas */
+.tabla-registros tr:hover {
+    background-color: #444444; /* Fondo más claro al pasar el cursor */
+}
+
+/* Responsividad */
+@media (max-width: 768px) {
+    .tabla-registros {
+        font-size: 14px;
+    }
+
+    .registros-titulo {
+        font-size: 20px;
+    }
+}
