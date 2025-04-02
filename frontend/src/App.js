@@ -6,7 +6,7 @@ import Navbar from "./Componentes/Navbar";
 function App() {
   const [paginaPrincipal, setPaginaPrincipal] = useState(true);
   const [tabla, setTabla] = useState(false);
-
+/**puto */
   return (
     <>
     <div className="App">
