@@ -1,8 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import firebase_admin
+from firebase_admin import credentials, firestore, exceptions
+from datetime import datetime
+import os
+from dotenv import load_dotenv
 
-app = Flask(__name__)
-CORS(app)
+# Cargar variables de entorno
+load_dotenv()
 
 REGLAS = [
     {
@@ -21,12 +26,12 @@ REGLAS = [
         "severidad": "Media"
     },
     {
-        "sintomas": ["Falla De Encendido"],  # Nota: Normalizado a mayúsculas
+        "sintomas": ["Falla De Encendido"],
         "diagnostico": "Batería descargada, bujías en mal estado o alternador defectuoso.",
         "severidad": "Crítica"
     },
     {
-        "sintomas": ["Problema En Los Frenos"],  # Versión normalizada
+        "sintomas": ["Problema En Los Frenos"],
         "diagnostico": "Pastillas de freno desgastadas o líquido de frenos bajo.",
         "severidad": "Crítica"
     },
@@ -77,111 +82,170 @@ REGLAS = [
     },
     {
         "sintomas": ["Testo"],
-        "diagnostico": "",
-        "severidad": "Crítica"
+        "diagnostico": "Síntoma de prueba (verificar funcionamiento del sistema).",
+        "severidad": "Baja"
     }
-] # Tus reglas actualizadas
+]
 
-#FUNCION PARA EVALUAR LOS SINTOMAS Y DEFINIR EL DIAGNOSTICO
+# Inicialización de Firebase
+def initialize_firebase():
+    try:
+        # Configuración para desarrollo/producción
+        if os.getenv("FIREBASE_CONFIG"):  # Usar variables de entorno en producción
+            firebase_config = {
+                "type": os.getenv("FIREBASE_TYPE"),
+                "project_id": os.getenv("FIREBASE_PROJECT_ID"),
+                "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
+                "private_key": os.getenv("FIREBASE_PRIVATE_KEY").replace('\\n', '\n'),
+                "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
+                "client_id": os.getenv("FIREBASE_CLIENT_ID"),
+                "auth_uri": os.getenv("FIREBASE_AUTH_URI"),
+                "token_uri": os.getenv("FIREBASE_TOKEN_URI"),
+                "auth_provider_x509_cert_url": os.getenv("FIREBASE_AUTH_PROVIDER_CERT_URL"),
+                "client_x509_cert_url": os.getenv("FIREBASE_CLIENT_CERT_URL")
+            }
+            cred = credentials.Certificate(firebase_config)
+        else:  # Usar archivo JSON en desarrollo
+            cred = credentials.Certificate("../serviceAccountKey.json")
+        
+        firebase_admin.initialize_app(cred)
+        return firestore.client()
+    except Exception as e:
+        print(f"🔥 Error inicializando Firebase: {str(e)}")
+        raise
+
+# Inicializar Firestore
+try:
+    db = initialize_firebase()
+except exceptions.FirebaseError as e:
+    print(f"❌ Error crítico: No se pudo conectar a Firestore: {str(e)}")
+    db = None  # Modo de fallback (usando lista local)
+
+app = Flask(__name__)
+CORS(app)
+
+
+# Endpoints
 @app.route('/start', methods=['POST'])
-#METODO POST
 def iniciar():
-    return {
-            "diagnostico": "Programa Iniciado",
-            "severidad": "",
-            "mensaje": "¡Bienvenido! Selecciona las fallas para diagnosticar."  # Se incluye solo si hay múltiples diagnósticos
-        }
-
-diagnosticos_guardados = []
+    return jsonify({
+        "diagnostico": "Programa Iniciado",
+        "severidad": "",
+        "mensaje": "¡Bienvenido! Selecciona las fallas para diagnosticar."
+    })
 
 @app.route('/diagnosticos', methods=['GET'])
 def obtener_diagnosticos_guardados():
-    return jsonify(diagnosticos_guardados), 200
+    try:
+        if db:
+            diagnosticos = []
+            docs = db.collection('diagnosticos').order_by('timestamp', direction='DESCENDING').limit(50).stream()
+            for doc in docs:
+                diag = doc.to_dict()
+                diag['id'] = doc.id
+                diagnosticos.append(diag)
+            return jsonify(diagnosticos), 200
+        else:
+            return jsonify({"error": "Firestore no disponible"}), 503
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
+@app.route('/debug-reglas', methods=['GET'])
+def debug_reglas():
+    try:
+        if db:  # Si Firebase está conectado
+            reglas_ref = db.collection('reglas').stream()
+            reglas_firestore = [doc.to_dict() for doc in reglas_ref]
+            return jsonify({
+                "fuente": "Firestore",
+                "reglas": reglas_firestore,
+                "total": len(reglas_firestore)
+            }), 200
+        else:  # Modo local
+            return jsonify({
+                "fuente": "Local",
+                "reglas": REGLAS,
+                "total": len(REGLAS)
+            }), 200
+    except Exception as e:
+        return jsonify({
+            "error": str(e),
+            "mensaje": "Error al obtener reglas"
+        }), 500
 
 @app.route('/diagnostico', methods=['POST'])
 def obtener_diagnostico():
     try:
         data = request.get_json()
         
-        # Validación mejorada
         if not data or not isinstance(data.get('sintomas', []), list):
             return jsonify({"error": "Formato inválido. Se requiere lista de 'sintomas'"}), 400
         
         sintomas = [s.strip().title() for s in data['sintomas'] if isinstance(s, str)]
-        
-        # Verificar síntomas duplicados
         sintomas_unicos = list(set(sintomas))
+        
         if len(sintomas_unicos) != len(sintomas):
             return jsonify({"warning": "Se detectaron síntomas duplicados"}), 400
 
-        # Obtener diagnóstico
         resultado = diagnosticar(sintomas_unicos)
 
-        # Guardar en la lista
-        diagnosticos_guardados.append({
+        # Guardar en Firestore o en memoria
+        diagnostico_data = {
             "sintomas": sintomas_unicos,
             "diagnostico": resultado["diagnostico"],
-            "severidad": resultado["severidad"]
-        })
+            "severidad": resultado["severidad"],
+            "timestamp": datetime.now().isoformat()
+        }
+
+        if db:
+            doc_ref = db.collection('diagnosticos').document()
+            doc_ref.set(diagnostico_data)
+            diagnostico_data['id'] = doc_ref.id
         
         return jsonify(resultado), 200
 
     except Exception as e:
-        app.logger.error(f"Error: {str(e)}")
+        app.logger.error(f"Error en /diagnostico: {str(e)}")
         return jsonify({"error": "Error interno del servidor"}), 500
 
-#FUNCION PARA MANDAR LOS DIAGNOSTICOS POR EL ENDPOINT
+# Lógica de diagnóstico
 def diagnosticar(sintomas):
     prioridad = {"Crítica": 3, "Alta": 2, "Media": 1, "Baja": 0}
     diagnosticos_encontrados = []
 
-    # Evaluar cada regla con los síntomas
     for regla in REGLAS:
         sintomas_comunes = list(set(sintomas) & set(regla["sintomas"]))
-        cantidad_coincidencias = len(sintomas_comunes)
-
-        if cantidad_coincidencias > 0:
+        if sintomas_comunes:
             diagnosticos_encontrados.append({
                 "diagnostico": regla["diagnostico"],
                 "severidad": regla["severidad"],
                 "sintomas_considerados": sintomas_comunes,
-                "coincidencias": cantidad_coincidencias,
-                "prioridad": prioridad[regla["severidad"]]
+                "coincidencias": len(sintomas_comunes),
+                "prioridad": prioridad.get(regla["severidad"], 0)
             })
 
-    # Si encontramos diagnósticos, los ordenamos por prioridad y coincidencias
     if diagnosticos_encontrados:
-        diagnosticos_encontrados.sort(key=lambda x: (x["coincidencias"], x["prioridad"]), reverse=True)
-
-        # Si hay más de un diagnóstico, combinamos los mensajes
-        mensaje_diagnostico = "  ".join([d["diagnostico"] for d in diagnosticos_encontrados])
-
-        # Mensaje extra si hay más de un diagnóstico
-        mensaje_advertencia = (
-            "Este diagnóstico es una recomendación. Para mayor precisión, intenta seleccionar un solo síntoma."
-            if len(diagnosticos_encontrados) > 1 else None
-        )
-
+        diagnosticos_encontrados.sort(key=lambda x: (-x['coincidencias'], -x['prioridad']))
+        
         return {
-            "diagnostico": mensaje_diagnostico,
-            "severidad": diagnosticos_encontrados[0]["severidad"],  # Tomamos la severidad más alta
+            "diagnostico": " ".join(d["diagnostico"] for d in diagnosticos_encontrados),
+            "severidad": diagnosticos_encontrados[0]["severidad"],
             "sintomas_considerados": [d["sintomas_considerados"] for d in diagnosticos_encontrados],
-            "mensaje": mensaje_advertencia  # Se incluye solo si hay múltiples diagnósticos
+            "mensaje": "Este diagnóstico es una recomendación. Para mayor precisión, intenta seleccionar un solo síntoma." if len(diagnosticos_encontrados) > 1 else None
         }
     else:
         return {
             "diagnostico": "Diagnóstico no encontrado. Consulte un especialista.",
             "severidad": "Desconocida",
-            "mensaje": None  # No hay advertencia si no se encontró un diagnóstico
+            "mensaje": None
         }
 
-    
 @app.after_request
 def add_cors_headers(response):
     response.headers['Access-Control-Allow-Origin'] = '*'
-    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
     return response
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=os.getenv("FLASK_DEBUG", True), host='0.0.0.0', port=int(os.getenv("PORT", 5000)))
