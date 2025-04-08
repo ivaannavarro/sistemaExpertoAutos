@@ -1,91 +1,60 @@
-import React, { useEffect, useState } from 'react';
-import { Box, Paper, Typography, Grid } from '@mui/material';
-import { Bar, Pie } from 'react-chartjs-2';
+import React from 'react';
+import { Box, Typography } from '@mui/material'; // Importa Typography desde @mui/material
+import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  BarElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  Filler
 } from 'chart.js';
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
-  BarElement,
+  PointElement,
+  LineElement,
   Title,
   Tooltip,
   Legend,
-  ArcElement
+  Filler
 );
 
 const Grafica = ({ diagnosticos }) => {
-  const [estadisticas, setEstadisticas] = useState({
-    fallas: {},
-    marcas: {}
-  });
+  if (!diagnosticos || diagnosticos.length === 0) {
+    return <Typography variant="h6" color="text.secondary">No hay datos para mostrar en la gráfica</Typography>;
+  }
 
-  useEffect(() => {
-    if (diagnosticos && diagnosticos.length > 0) {
-      const fallas = {};
-      const marcas = {};
-
-      diagnosticos.forEach(diag => {
-        // Contar fallas
-        if (diag.sintomas) {
-          diag.sintomas.forEach(sintoma => {
-            fallas[sintoma] = (fallas[sintoma] || 0) + 1;
-          });
-        }
-
-        // Contar marcas
-        if (diag.vehiculo && diag.vehiculo.marca) {
-          marcas[diag.vehiculo.marca] = (marcas[diag.vehiculo.marca] || 0) + 1;
-        }
-      });
-
-      setEstadisticas({ fallas, marcas });
-    }
-  }, [diagnosticos]);
-
-  const datosFallas = {
-    labels: Object.keys(estadisticas.fallas),
+  // Preparar los datos para la gráfica
+  const datos = {
+    labels: diagnosticos.map((d, index) => `Caso ${index + 1}`), // Etiquetas para cada caso
     datasets: [
       {
-        label: 'Frecuencia de Fallas',
-        data: Object.values(estadisticas.fallas),
-        backgroundColor: 'rgba(75, 192, 192, 0.6)',
-        borderColor: 'rgba(75, 192, 192, 1)',
-        borderWidth: 1,
-      },
-    ],
-  };
-
-  const datosMarcas = {
-    labels: Object.keys(estadisticas.marcas),
-    datasets: [
-      {
-        data: Object.values(estadisticas.marcas),
-        backgroundColor: [
-          'rgba(255, 99, 132, 0.6)',
-          'rgba(54, 162, 235, 0.6)',
-          'rgba(255, 206, 86, 0.6)',
-          'rgba(75, 192, 192, 0.6)',
-          'rgba(153, 102, 255, 0.6)',
-        ],
-        borderColor: [
-          'rgba(255, 99, 132, 1)',
-          'rgba(54, 162, 235, 1)',
-          'rgba(255, 206, 86, 1)',
-          'rgba(75, 192, 192, 1)',
-          'rgba(153, 102, 255, 1)',
-        ],
-        borderWidth: 1,
-      },
-    ],
+        label: 'Severidad',
+        data: diagnosticos.map(d => {
+          switch (d.severidad) {
+            case 'Crítica': return 4;
+            case 'Alto': return 3;
+            case 'Medio': return 2;
+            case 'Bajo': return 1;
+            default: return 0;
+          }
+        }),
+        borderColor: 'rgb(255, 99, 132)',
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        tension: 0.4, // Suaviza las líneas
+        fill: true,
+        pointRadius: 6,
+        pointHoverRadius: 8,
+        pointBackgroundColor: 'rgb(255, 99, 132)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+      }
+    ]
   };
 
   const opciones = {
@@ -93,31 +62,79 @@ const Grafica = ({ diagnosticos }) => {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        position: 'top',
+        display: false
       },
+      tooltip: {
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        titleColor: '#000',
+        bodyColor: '#000',
+        borderColor: 'rgba(0, 0, 0, 0.1)',
+        borderWidth: 1,
+        padding: 12,
+        boxPadding: 6,
+        usePointStyle: true,
+        callbacks: {
+          label: function (context) {
+            const value = context.raw;
+            let severidad = '';
+            switch (value) {
+              case 4: severidad = 'Crítica'; break;
+              case 3: severidad = 'Alto'; break;
+              case 2: severidad = 'Medio'; break;
+              case 1: severidad = 'Bajo'; break;
+              default: severidad = 'Sin severidad';
+            }
+            return `Severidad: ${severidad}`;
+          }
+        }
+      }
     },
+    scales: {
+      y: {
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1,
+          callback: function (value) {
+            switch (value) {
+              case 4: return 'Crítica';
+              case 3: return 'Alto';
+              case 2: return 'Medio';
+              case 1: return 'Bajo';
+              default: return '';
+            }
+          }
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        }
+      },
+      x: {
+        grid: {
+          display: false
+        }
+      }
+    },
+    elements: {
+      line: {
+        borderWidth: 3
+      }
+    },
+    animation: {
+      duration: 1000, // Duración de la animación en milisegundos
+      easing: 'easeOutQuart'
+    }
   };
 
   return (
-    <Box sx={{ mt: 4 }}>
-      <Grid container spacing={3}>
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 2, height: '300px' }}>
-            <Typography variant="h6" gutterBottom>
-              Fallas Más Comunes
-            </Typography>
-            <Bar data={datosFallas} options={opciones} />
-          </Paper>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ p: 2, height: '300px' }}>
-            <Typography variant="h6" gutterBottom>
-              Marcas de Vehículos
-            </Typography>
-            <Pie data={datosMarcas} options={opciones} />
-          </Paper>
-        </Grid>
-      </Grid>
+    <Box sx={{
+      height: '100%',
+      width: '100%',
+      position: 'relative',
+      '& canvas': {
+        maxHeight: '100% !important'
+      }
+    }}>
+      <Line data={datos} options={opciones} />
     </Box>
   );
 };

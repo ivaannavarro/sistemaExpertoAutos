@@ -1,1 +1,30 @@
-para correr el programa solo basta con instalar las dependencias y ejecutar NPM START, se correrá tanto como el backend como el frontend
+Para correr el programa:
+
+1. Instalación de dependencias:
+   - Frontend: 
+     ```bash
+     cd frontend
+     npm install
+     ```
+   - Backend:
+     ```bash
+     cd backend
+     pip install -r requirements.txt  # Nota: el archivo se llama requirements.txt (con 'a')
+     ```
+
+2. Ejecución:
+   ```bash
+   npm start  # Esto ejecutará tanto el backend como el frontend
+   ```
+
+Notas importantes:
+- Asegúrate de que el archivo de dependencias del backend se llame requirements.txt (no requeriments.txt)
+- Si el archivo no se abre, verifica que:
+  1. Estás en el directorio correcto (backend)
+  2. El nombre del archivo es exactamente requirements.txt
+  3. Tienes permisos de lectura en el archivo
+
+Para ver las ramas remotas:
+```bash
+git fetch --all
+```

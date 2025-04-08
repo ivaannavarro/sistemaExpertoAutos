@@ -5,11 +5,21 @@ import {toast } from "react-toastify";
 import Toast from "./Toast";
 import Registros from "./Registros";
 import "../Styles/styles.css"; // Archivo CSS para los estilos
-import { Box, Button, Typography, Paper, List, ListItem, ListItemText, Grid, Container, Card, CardContent, Divider, Chip, IconButton, Collapse } from '@mui/material';
+import { Box, Button, Typography, Paper, List, ListItem, ListItemText, Grid, Container, Card, CardContent, Divider, Chip, IconButton, Collapse, Avatar, Badge, Tooltip } from '@mui/material';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import Formulario from './Formulario';
 import Grafica from './Grafica';
+import PanelResultados from './PanelResultados';
+import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
+import SpeedIcon from '@mui/icons-material/Speed';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import BuildIcon from '@mui/icons-material/Build';
+import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import HistoryIcon from '@mui/icons-material/History';
+import HistorialDiagnosticos from './HistorialDiagnosticos';
 
 const Diagnostico = ({
   tabla,
@@ -25,19 +35,57 @@ const Diagnostico = ({
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [infoVehiculo, setInfoVehiculo] = useState(null);
   const [expandedDiagnostico, setExpandedDiagnostico] = useState(null);
+  const [conectado, setConectado] = useState(false);
+  const [mostrarHistorial, setMostrarHistorial] = useState(false);
+  const [grafica, setGrafica] = useState(null);
 
   useEffect(() => {
-    // Muestra un mensaje de éxito al hacer una prueba de que funciona el backend
-    inicio();
-   }
-  , []);
+    verificarConexion();
+  }, []);
 
   useEffect(() => {
-    // Recarga la lista de registros al obtener un nuevo registro
+    if (resultado) {
     obtenerRegistros();
    }
-  , [resultado]);
-  
+  }, [resultado]);
+
+  const verificarConexion = async () => {
+    try {
+      console.log('Intentando conectar con el servidor...');
+      const response = await axios.get('http://localhost:5000/health', {
+        timeout: 5000 // 5 segundos de timeout
+      });
+      
+      console.log('Respuesta del servidor:', response.data);
+      
+      if (response.status === 200) {
+        setConectado(true);
+        if (response.data.ultimos_diagnosticos) {
+          console.log('Diagnósticos recibidos:', response.data.ultimos_diagnosticos);
+          setDiagnosticos(response.data.ultimos_diagnosticos);
+        }
+        toast.success('Conexión establecida con el servidor');
+      } else {
+        console.error('Error en la respuesta:', response.status, response.data);
+        setConectado(false);
+        toast.error(`Error en la conexión: ${response.data.message || 'Error desconocido'}`);
+      }
+    } catch (error) {
+      console.error('Error de conexión:', error);
+      setConectado(false);
+      
+      if (error.response) {
+        // El servidor respondió con un código de error
+        toast.error(`Error del servidor: ${error.response.data.message || error.response.status}`);
+      } else if (error.request) {
+        // La petición fue hecha pero no hubo respuesta
+        toast.error('No se pudo conectar con el servidor. Verifica que esté en ejecución.');
+      } else {
+        // Error al configurar la petición
+        toast.error(`Error al configurar la conexión: ${error.message}`);
+      }
+    }
+  };
 
   // Lista ampliada de fallas comunes en automóviles
   const sintomas = [
@@ -81,7 +129,6 @@ const Diagnostico = ({
         );
         // Verifica la estructura real de la respuesta
         console.log("Respuesta completa:", response.data);
-
         // Se actualiza el estado con el diagnóstico obtenido, si es que lo obtiene
         if (response.data.diagnostico !== '') {
             const diagnosticos = response.data;
@@ -105,6 +152,8 @@ const Diagnostico = ({
     }
   };
 
+  console.log("GRAFICA DATA",grafica);
+
   // Función para consulta la lista de registros
   const obtenerRegistros = async () => {
     
@@ -119,6 +168,9 @@ const Diagnostico = ({
         );
         // Verifica la estructura real de la respuesta
         console.log("Respuesta completa:", response.data);
+
+        setGrafica(response.data);
+        // Se actualiza el estado con el diagnóstico obtenido, si es que lo obtiene
 
         if (response.data.diagnostico !== '') {
           const registros = response.data;
@@ -167,12 +219,27 @@ const Diagnostico = ({
         }),
       });
 
+      if (!response.ok) {
+        throw new Error('Error en la respuesta del servidor');
+      }
+
       const data = await response.json();
+      
+      if (!data) {
+        throw new Error('No se recibieron datos del servidor');
+      }
+
+      // Asegurarnos de que diagnosticos sea un array antes de actualizarlo
+      setDiagnosticos(prevDiagnosticos => {
+        const nuevosDiagnosticos = Array.isArray(prevDiagnosticos) ? prevDiagnosticos : [];
+        return [data, ...nuevosDiagnosticos];
+      });
+
       setResultado(data);
-      setDiagnosticos(prev => [...prev, data]);
+      toast.success('Diagnóstico realizado con éxito');
     } catch (error) {
       console.error('Error al realizar el diagnóstico:', error);
-      toast.error('Error al realizar el diagnóstico');
+      toast.error('Error al realizar el diagnóstico: ' + error.message);
     }
   };
 
@@ -183,34 +250,119 @@ const Diagnostico = ({
   };
 
   // Función para limpiar la selección de síntomas
-  const limpiarSeleccion = () => {
-      setSintomasSeleccionados([]);
-      setResultado(null);
-      setDiagnosticos([]);
-  };
+  // const limpiarSeleccion = () => {
+  //     setSintomasSeleccionados([]);
+  //     setResultado(null);
+  //     setDiagnosticos([]);
+  // };
 
   const handleExpandClick = (index) => {
     setExpandedDiagnostico(expandedDiagnostico === index ? null : index);
   };
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-      <Grid container spacing={3}>
-        {/* Panel de Síntomas */}
-        <Grid item xs={12} md={8}>
-          <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h5" gutterBottom color="primary">
-              Selecciona los síntomas que presenta tu vehículo
-            </Typography>
+    <Box sx={{ 
+      minHeight: '100vh',
+      p: 3,
+      position: 'relative',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 3,
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+    }}>
+      <Toast />
+      
+      {/* Layout principal */}
+      <Box sx={{ 
+        display: 'grid',
+        gridTemplateColumns: '1fr 400px',
+        gap: 3,
+        maxWidth: '1600px',
+        margin: '0 auto',
+        width: '100%'
+      }}>
+        {/* Columna izquierda */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {/* Panel de selección de síntomas */}
+          <Paper elevation={3} sx={{ 
+            p: 3, 
+            borderRadius: '20px',
+            background: 'rgba(255, 255, 255, 0.95)',
+            backdropFilter: 'blur(10px)',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+            border: '1px solid rgba(255, 255, 255, 0.2)'
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Avatar sx={{ bgcolor: 'primary.main', width: 56, height: 56 }}>
+                  <BuildIcon sx={{ fontSize: 32 }} />
+                </Avatar>
+                <Box>
+                  <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>
+                    Diagnóstico de Vehículo
+                  </Typography>
+                  <Typography variant="subtitle1" color="text.secondary">
+                    Selecciona los síntomas que presenta tu vehículo
+                  </Typography>
+                </Box>
+              </Box>
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={() => setMostrarHistorial(true)}
+                startIcon={<HistoryIcon />}
+                sx={{
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  px: 3,
+                  py: 1.5,
+                  borderWidth: 2,
+                  '&:hover': {
+                    borderWidth: 2,
+                    backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                  }
+                }}
+              >
+                Ver Historial
+              </Button>
+            </Box>
             
             {infoVehiculo && (
-              <Box sx={{ mb: 3, p: 2, bgcolor: 'primary.light', borderRadius: 1 }}>
-                <Typography variant="subtitle1" color="primary">
-                  Vehículo: {infoVehiculo.marca} {infoVehiculo.modelo} ({infoVehiculo.año})
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Kilometraje: {infoVehiculo.kilometraje} km
-                </Typography>
+              <Box sx={{ 
+                mb: 3, 
+                p: 3, 
+                borderRadius: '16px',
+                background: 'linear-gradient(145deg, #e3f2fd, #bbdefb)',
+                boxShadow: '0 4px 15px rgba(0, 0, 0, 0.05)',
+                border: '1px solid rgba(25, 118, 210, 0.1)'
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                  <Avatar sx={{ bgcolor: 'primary.main' }}>
+                    <DirectionsCarIcon />
+                  </Avatar>
+                  <Box>
+                    <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
+                      {infoVehiculo.marca} {infoVehiculo.modelo}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                      <Chip 
+                        icon={<CalendarMonthIcon />}
+                        label={`Año: ${infoVehiculo.año}`}
+                        color="primary"
+                        variant="outlined"
+                        size="small"
+                      />
+                      <Chip 
+                        icon={<SpeedIcon />}
+                        label={`${infoVehiculo.kilometraje} km`}
+                        color="secondary"
+                        variant="outlined"
+                        size="small"
+                      />
+                    </Box>
+                  </Box>
+                </Box>
               </Box>
             )}
             
@@ -228,6 +380,12 @@ const Diagnostico = ({
                         onDelete={() => handleSintomaClick(sintoma)}
                         color="primary"
                         variant="outlined"
+                        sx={{
+                          '&:hover': {
+                            backgroundColor: 'primary.light',
+                            color: 'primary.dark'
+                          }
+                        }}
                       />
                     ))}
                   </Box>
@@ -249,21 +407,28 @@ const Diagnostico = ({
                   onClick={() => handleSintomaClick(sintoma)}
                   selected={sintomasSeleccionados.includes(sintoma)}
                   sx={{
-                    borderRadius: 1,
+                    borderRadius: '12px',
                     mb: 1,
+                    transition: 'all 0.3s ease',
                     '&.Mui-selected': {
                       backgroundColor: 'primary.light',
                       '&:hover': {
                         backgroundColor: 'primary.light',
                       },
                     },
+                    '&:hover': {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.1)',
+                      backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                    }
                   }}
                 >
                   <ListItemText 
                     primary={sintoma}
                     primaryTypographyProps={{
                       variant: 'body1',
-                      color: sintomasSeleccionados.includes(sintoma) ? 'primary' : 'text.primary'
+                      color: sintomasSeleccionados.includes(sintoma) ? 'primary' : 'text.primary',
+                      fontWeight: sintomasSeleccionados.includes(sintoma) ? 'bold' : 'normal'
                     }}
                   />
                 </ListItem>
@@ -277,6 +442,18 @@ const Diagnostico = ({
                 onClick={realizarDiagnostico}
                 disabled={sintomasSeleccionados.length === 0 || !infoVehiculo}
                 size="large"
+                sx={{ 
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  px: 4,
+                  py: 1.5,
+                  boxShadow: '0 4px 14px rgba(25, 118, 210, 0.3)',
+                  '&:hover': {
+                    boxShadow: '0 6px 20px rgba(25, 118, 210, 0.4)',
+                    transform: 'translateY(-1px)'
+                  }
+                }}
               >
                 Realizar Diagnóstico
               </Button>
@@ -286,120 +463,101 @@ const Diagnostico = ({
                 color="primary"
                 onClick={() => setMostrarFormulario(!mostrarFormulario)}
                 size="large"
+                sx={{ 
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  px: 4,
+                  py: 1.5,
+                  borderWidth: 2,
+                  '&:hover': {
+                    borderWidth: 2,
+                    backgroundColor: 'rgba(25, 118, 210, 0.04)'
+                  }
+                }}
               >
-                {mostrarFormulario ? 'Ocultar Formulario' : 'Agregar Información del Vehículo'}
+                {mostrarFormulario ? (
+                  <>
+                    <CloseIcon sx={{ mr: 1 }} />
+                    Ocultar Formulario
+                  </>
+                ) : (
+                  <>
+                    <AddIcon sx={{ mr: 1 }} />
+                    Agregar Vehículo
+                  </>
+                )}
               </Button>
             </Box>
           </Paper>
-        </Grid>
 
-        {/* Panel de Resultados */}
-        <Grid item xs={12} md={4}>
-          <Paper elevation={3} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <Typography variant="h5" gutterBottom color="primary">
-              Historial de Diagnósticos
-            </Typography>
-            
-            <Box sx={{ 
-              flex: 1,
-              overflow: 'auto',
-              maxHeight: '600px',
-              '&::-webkit-scrollbar': {
-                width: '8px',
-              },
-              '&::-webkit-scrollbar-track': {
-                background: '#f1f1f1',
-                borderRadius: '4px',
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: '#888',
-                borderRadius: '4px',
-                '&:hover': {
-                  background: '#555',
-                },
-              },
+          {/* Formulario */}
+          {mostrarFormulario && (
+            <Paper elevation={3} sx={{ 
+              p: 3, 
+              borderRadius: '20px',
+              background: 'rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              width: '96%'
             }}>
-              {diagnosticos.length > 0 ? (
-                diagnosticos.map((diagnostico, index) => (
-                  <Card 
-                    key={index} 
-                    variant="outlined" 
-                    sx={{ 
-                      mb: 2,
-                      '&:last-child': {
-                        mb: 0
-                      }
-                    }}
-                  >
-                    <CardContent sx={{ p: 2 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="h6" gutterBottom>
-                          Diagnóstico #{diagnosticos.length - index}
-                        </Typography>
-                        <IconButton
-                          onClick={() => handleExpandClick(index)}
-                          size="small"
-                        >
-                          {expandedDiagnostico === index ? <ExpandLess /> : <ExpandMore />}
-                        </IconButton>
-                      </Box>
-                      <Collapse in={expandedDiagnostico === index}>
-                        <Box sx={{ mt: 1 }}>
-                          <Typography variant="body1" paragraph>
-                            {diagnostico.diagnostico}
-                          </Typography>
-                          <Divider sx={{ my: 1 }} />
-                          <Typography variant="subtitle2" color="text.secondary">
-                            Severidad: {diagnostico.severidad}
-                          </Typography>
-                          <Typography variant="caption" color="text.secondary">
-                            Fecha: {new Date().toLocaleString()}
-                          </Typography>
-                        </Box>
-                      </Collapse>
-                    </CardContent>
-                  </Card>
-                ))
-              ) : (
-                <Box sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center', 
-                  height: '200px',
-                  backgroundColor: 'grey.100',
-                  borderRadius: 1
-                }}>
-                  <Typography variant="body1" color="text.secondary">
-                    Realiza un diagnóstico para ver los resultados
+              <Formulario onGuardar={handleGuardarInfoVehiculo} />
+            </Paper>
+          )}
+
+          {grafica && (
+            <Paper elevation={3} sx={{ 
+              p: 3, 
+              borderRadius: '20px',
+              background: 'rgba(255, 255, 255, 0.95)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              height: '400px',
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                <Avatar sx={{ bgcolor: 'primary.main' }}>
+                  <TrendingUpIcon />
+                </Avatar>
+                <Box>
+                  <Typography variant="h5" color="primary" sx={{ fontWeight: 'bold' }}>
+                    Estadísticas de Diagnósticos
+                  </Typography>
+                  <Typography variant="subtitle1" color="text.secondary">
+                    Análisis de los diagnósticos realizados
                   </Typography>
                 </Box>
-              )}
-            </Box>
-          </Paper>
-        </Grid>
+              </Box>
+              <Box sx={{ flex: 1, minHeight: 0 }}>
+                <Grafica diagnosticos={grafica} />
+              </Box>
+            </Paper>
+          )}
+        </Box>
 
-        {/* Formulario */}
-        {mostrarFormulario && (
-          <Grid item xs={12}>
-            <Formulario onGuardar={handleGuardarInfoVehiculo} />
-          </Grid>
-        )}
+        {/* Panel de Resultados */}
+        <PanelResultados 
+          diagnosticos={diagnosticos}
+          expandedDiagnostico={expandedDiagnostico}
+          onExpandClick={handleExpandClick}
+        />
+      </Box>
 
-        {/* Gráficas */}
-        {diagnosticos.length > 0 && (
-          <Grid item xs={12}>
-            <Grafica diagnosticos={diagnosticos} />
-          </Grid>
-        )}
-      </Grid>
-    </Container>
+      {/* Modal de Historial */}
+      <HistorialDiagnosticos 
+        open={mostrarHistorial}
+        onClose={() => setMostrarHistorial(false)}
+      />
+    </Box>
   );
 };
 
 PropTypes.Diagnostico = {
   tabla: PropTypes.bool,
   setTabla: PropTypes.func
-
 };
 
 export default Diagnostico;

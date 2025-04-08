@@ -68,3 +68,49 @@ This section has moved here: [https://facebook.github.io/create-react-app/docs/d
 ### `npm run build` fails to minify
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+
+## Configuración de Git
+
+Para una mejor experiencia con Git, se recomienda configurar las siguientes opciones:
+
+```bash
+# Configurar el nombre de usuario
+git config --global user.name "Tu Nombre"
+
+# Configurar el correo electrónico
+git config --global user.email "tu.email@ejemplo.com"
+
+# Configurar el editor por defecto (opcional)
+git config --global core.editor "code --wait"
+
+# Configurar el comportamiento de push por defecto
+git config --global push.default current
+
+# Configurar el comportamiento de pull por defecto
+git config --global pull.rebase true
+
+# Configurar el comportamiento de merge por defecto
+git config --global merge.ff false
+
+# Configurar el comportamiento de checkout por defecto
+git config --global checkout.defaultRemote origin
+
+# Configurar el comportamiento de fetch por defecto
+git config --global fetch.prune true
+
+# Configurar el comportamiento de rebase por defecto
+git config --global rebase.autoStash true
+```
+
+Estas configuraciones ayudarán a:
+- Mantener un historial de commits más limpio
+- Evitar conflictos innecesarios
+- Mejorar el flujo de trabajo con ramas
+- Automatizar tareas comunes
+
+Para verificar tu configuración actual:
+```bash
+git config --list
+```
+```bash
+</rewritten_file>

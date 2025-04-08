@@ -12,12 +12,14 @@ function App() {
     <div className="App">
       <Navbar />
 
+      {/* Botón para alternar entre la página principal y la página de diagnóstico 
       <button 
             className="boton azul" 
             onClick={() => setPaginaPrincipal(!paginaPrincipal)}
       >
             Abrir pagina de diagnostico
       </button>
+      */}
         
       {paginaPrincipal &&
         <>
