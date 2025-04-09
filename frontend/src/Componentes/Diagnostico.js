@@ -3,11 +3,8 @@ import PropTypes from "prop-types";
 import axios from "axios";
 import {toast } from "react-toastify";
 import Toast from "./Toast";
-import Registros from "./Registros";
 import "../Styles/styles.css"; // Archivo CSS para los estilos
-import { Box, Button, Typography, Paper, List, ListItem, ListItemText, Grid, Container, Card, CardContent, Divider, Chip, IconButton, Collapse, Avatar, Badge, Tooltip } from '@mui/material';
-import ExpandLess from '@mui/icons-material/ExpandLess';
-import ExpandMore from '@mui/icons-material/ExpandMore';
+import { Box, Button, Typography, Paper, List, ListItem, ListItemText, Chip, Avatar} from '@mui/material';
 import Formulario from './Formulario';
 import Grafica from './Grafica';
 import PanelResultados from './PanelResultados';
@@ -52,7 +49,7 @@ const Diagnostico = ({
   const verificarConexion = async () => {
     try {
       console.log('Intentando conectar con el servidor...');
-      const response = await axios.get('http://localhost:5000/health', {
+      const response = await axios.post('http://localhost:5000/start', {
         timeout: 5000 // 5 segundos de timeout
       });
       

@@ -3,7 +3,7 @@ from flask_cors import CORS
 import os
 from dotenv import load_dotenv
 from config import db
-from testo import iniciar, obtener_diagnosticos_guardados, debug_reglas, obtener_diagnostico
+from testo import *
 from constants import CORS_HEADERS, APP_CONFIG
 from datetime import datetime
 from google.cloud import firestore
@@ -14,6 +14,19 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+
+
+# Endpoints, PARA AGREGAR UN ENDPOINT PRIMERO DEBES IMPORTAR LA CLASE DONDE SE ENCUENTRA
+# NO OLVIDES IMPORTAR EL METODO Y LA DIRECCION POR LA CUAL SE LLAMARA, TAMBIEN A LA FUNCION QUE LLAMA
+app.route('/start', methods=['POST'])(iniciar)
+app.route('/diagnosticos', methods=['GET'])(obtener_diagnosticos_guardados)
+app.route('/debug-reglas', methods=['GET'])(debug_reglas)
+app.route('/diagnostico', methods=['POST'])(obtener_diagnostico)
+app.route('/allDiagnosticos', methods=['POST'])(obtenerTodosDiagnosticos)
+app.route('/obtenerVehiculos', methods=['POST'])(obtenerVehiculos)
+
+#LAS FUNCIONES DE ABAJO SON PARA CARGAR DATOS DEL VEHICULO, EN TEORIA NO DEBERIAN SER MODIFICADAS
+#PARA AGREGAR UN ENDPOINT HAZLO ARRIBA
 
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -104,71 +117,6 @@ def health_check():
             "message": f"Error interno del servidor: {str(e)}",
             "timestamp": datetime.utcnow().isoformat() + "Z"
         }), 500
-
-@app.route('/ultimos-diagnosticos', methods=['GET'])
-def obtener_ultimos_diagnosticos():
-    try:
-        if not db:
-            return jsonify({"error": "Firestore no disponible"}), 503
-
-        # Obtener los últimos 5 diagnósticos ordenados por fecha
-        diagnosticos = db.collection('diagnosticos')\
-            .order_by('fecha', direction='DESCENDING')\
-            .limit(5)\
-            .stream()
-
-        resultados = []
-        for doc in diagnosticos:
-            diagnostico = doc.to_dict()
-            diagnostico['id'] = doc.id
-            resultados.append(diagnostico)
-
-        return jsonify(resultados), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/todos-diagnosticos', methods=['GET'])
-def obtener_todos_diagnosticos():
-    try:
-        if not db:
-            return jsonify({"error": "Firestore no disponible"}), 503
-
-        diagnosticos = db.collection('diagnosticos')\
-            .order_by('fecha', direction='DESCENDING')\
-            .stream()
-
-        resultados = []
-        for doc in diagnosticos:
-            diagnostico = doc.to_dict()
-            diagnostico['id'] = doc.id
-            resultados.append(diagnostico)
-
-        return jsonify(resultados), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/diagnostico/<id>', methods=['DELETE'])
-def eliminar_diagnostico(id):
-    try:
-        if not db:
-            return jsonify({"error": "Firestore no disponible"}), 503
-
-        # Verificar si el diagnóstico existe
-        doc = db.collection('diagnosticos').document(id).get()
-        if not doc.exists:
-            return jsonify({"error": "Diagnóstico no encontrado"}), 404
-
-        # Eliminar el diagnóstico
-        db.collection('diagnosticos').document(id).delete()
-        return jsonify({"mensaje": "Diagnóstico eliminado correctamente"}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# Endpoints
-app.route('/start', methods=['POST'])(iniciar)
-app.route('/diagnosticos', methods=['GET'])(obtener_diagnosticos_guardados)
-app.route('/debug-reglas', methods=['GET'])(debug_reglas)
-app.route('/diagnostico', methods=['POST'])(obtener_diagnostico)
 
 @app.route('/vehiculo', methods=['POST'])
 def guardar_vehiculo():

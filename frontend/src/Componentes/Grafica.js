@@ -29,6 +29,7 @@ const Grafica = ({ diagnosticos }) => {
     return <Typography variant="h6" color="text.secondary">No hay datos para mostrar en la gráfica</Typography>;
   }
 
+  console.log("Datos recibidos:", diagnosticos.severidad);
   // Preparar los datos para la gráfica
   const datos = {
     labels: diagnosticos.map((d, index) => `Caso ${index + 1}`), // Etiquetas para cada caso
@@ -56,6 +57,9 @@ const Grafica = ({ diagnosticos }) => {
       }
     ]
   };
+
+  // Imprimir los datos en la consola
+  console.log("Datos para la gráfica:", datos);
 
   const opciones = {
     responsive: true,

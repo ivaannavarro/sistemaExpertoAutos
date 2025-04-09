@@ -40,7 +40,7 @@ const HistorialDiagnosticos = ({ open, onClose }) => {
   const cargarDiagnosticos = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/todos-diagnosticos');
+      const response = await axios.get('http://localhost:5000/allDiagnosticos');
       setDiagnosticos(response.data);
     } catch (error) {
       console.error('Error al cargar diagnósticos:', error);

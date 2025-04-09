@@ -108,7 +108,7 @@ const Formulario = ({ onGuardar }) => {
 	  console.error('Error completo:', error);
 	  setError(error.message);
 	}
-  };
+  };	
 
   return (
 	<Card sx={{

@@ -1,6 +1,7 @@
 from flask import jsonify, request
 from datetime import datetime
 from config import db
+from google.cloud.exceptions import NotFound
 from constants import ERROR_MESSAGES, HTTP_STATUS
 from reglas import REGLAS, PRIORIDADES
 
@@ -26,7 +27,59 @@ def obtener_diagnosticos_guardados():
             return jsonify({"error": ERROR_MESSAGES["FIREBASE_UNAVAILABLE"]}), HTTP_STATUS["SERVICE_UNAVAILABLE"]
     except Exception as e:
         return jsonify({"error": str(e)}), HTTP_STATUS["INTERNAL_ERROR"]
+    
+def obtenerTodosDiagnosticos():
+    try:
+        # Verificar si hay conexión a Firestore
+        if not db:
+            return jsonify({"error": ERROR_MESSAGES["DATABASE_NOT_CONNECTED"]}), HTTP_STATUS["INTERNAL_ERROR"]
 
+        # Obtener todos los documentos de la colección 'diagnosticos'
+        diagnosticos_ref = db.collection('diagnosticos').stream()
+
+        # Convertir documentos a una lista de diccionarios
+        lista_diagnosticos = []
+        for doc in diagnosticos_ref:
+            diagnostico = doc.to_dict()
+            diagnostico["id"] = doc.id  # Agregar el ID del documento
+            lista_diagnosticos.append(diagnostico)
+
+        # Retornar todos los diagnósticos
+        return jsonify({"diagnosticos": lista_diagnosticos}), HTTP_STATUS["OK"]
+
+    except Exception as e:
+        print(f"Error al obtener diagnósticos: {e}")
+        return jsonify({"error": ERROR_MESSAGES["INTERNAL_ERROR"]}), HTTP_STATUS["INTERNAL_ERROR"]
+
+def obtenerVehiculos():
+    try:
+        if not db:
+            return jsonify({"error": ERROR_MESSAGES["DATABASE_NOT_CONNECTED"]}), HTTP_STATUS["INTERNAL_ERROR"]
+
+        vehiculos_ref = db.collection('vehiculos').stream()
+        lista_vehiculos = []
+
+        for doc in vehiculos_ref:
+            vehiculo = doc.to_dict()
+            lista_vehiculos.append({
+                "id": doc.id,
+                "marca": vehiculo.get("marca"),
+                "modelo": vehiculo.get("modelo"),
+                "año": vehiculo.get("año"),
+                "kilometraje": vehiculo.get("kilometraje")
+            })
+
+        if not lista_vehiculos:
+            return jsonify({"message": "No hay vehículos registrados", "vehiculos": []}), HTTP_STATUS["OK"]
+
+        return jsonify({"vehiculos": lista_vehiculos}), HTTP_STATUS["OK"]
+
+    except NotFound:
+        return jsonify({"error": "La colección 'vehiculos' no existe"}), HTTP_STATUS["NOT_FOUND"]
+    except Exception as e:
+        print(f"Error al obtener vehículos: {e}")
+        return jsonify({"error": ERROR_MESSAGES["INTERNAL_ERROR"]}), HTTP_STATUS["INTERNAL_ERROR"]
+    
 def debug_reglas():
     try:
         if db:  # Si Firebase está conectado
