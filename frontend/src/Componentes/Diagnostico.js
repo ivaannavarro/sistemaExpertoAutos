@@ -35,9 +35,11 @@ const Diagnostico = ({
   const [conectado, setConectado] = useState(false);
   const [mostrarHistorial, setMostrarHistorial] = useState(false);
   const [grafica, setGrafica] = useState(null);
+  const [guardar, setGuardar] = useState(false); 
 
   useEffect(() => {
     verificarConexion();
+    obtenerRegistros();
   }, []);
 
   useEffect(() => {
@@ -112,44 +114,7 @@ const Diagnostico = ({
     });
   };
 
-  // Función para enviar los síntomas al backend y obtener un diagnóstico
-  const inicio = async () => {
-    
-    try {
-        // Se envían los síntomas al backend
-        const response = await axios.post(
-            'http://localhost:5000/start',
-            {
-                headers: { 'Content-Type': 'application/json' },
-                timeout: 5000
-            }
-        );
-        // Verifica la estructura real de la respuesta
-        console.log("Respuesta completa:", response.data);
-        // Se actualiza el estado con el diagnóstico obtenido, si es que lo obtiene
-        if (response.data.diagnostico !== '') {
-            const diagnosticos = response.data;
-          if (diagnosticos.mensaje !== null ) {
-            toast.success(diagnosticos.mensaje);
-          }
-        } 
-        else {
-          toast.error("El backend no se cargo");
-        }
-
-    } catch (error) {
-        let errorMessage = "Error: ";
-        if (error.response) {
-            errorMessage += `Código ${error.response.status} - ${error.response.data?.error || ''}`;
-        } else {
-            errorMessage += error.message;
-        }
-        console.error("Error detallado:", error);
-        toast.error(errorMessage);
-    }
-  };
-
-  console.log("GRAFICA DATA",grafica);
+  console.log("GRAFICA DATA", grafica);
 
   // Función para consulta la lista de registros
   const obtenerRegistros = async () => {
@@ -170,12 +135,9 @@ const Diagnostico = ({
         // Se actualiza el estado con el diagnóstico obtenido, si es que lo obtiene
 
         if (response.data.diagnostico !== '') {
-          const registros = response.data;
+          const registros = response.data.diagnostico;
           
           setRegistros(registros);
-            if (registros.mensaje !== null ) {
-              toast.warn(diagnosticos.mensaje);
-            }
         } 
 
     } catch (error) {
@@ -193,6 +155,7 @@ const Diagnostico = ({
   
   // Función para enviar los síntomas al backend y obtener un diagnóstico
   const realizarDiagnostico = async () => {
+    setGuardar(true);
     if (sintomasSeleccionados.length === 0) {
       toast.error("Debes seleccionar al menos un síntoma");
       return;
@@ -231,7 +194,7 @@ const Diagnostico = ({
         const nuevosDiagnosticos = Array.isArray(prevDiagnosticos) ? prevDiagnosticos : [];
         return [data, ...nuevosDiagnosticos];
       });
-
+      setGuardar(false);
       setResultado(data);
       toast.success('Diagnóstico realizado con éxito');
     } catch (error) {
@@ -437,7 +400,9 @@ const Diagnostico = ({
                 variant="contained"
                 color="primary"
                 onClick={realizarDiagnostico}
-                disabled={sintomasSeleccionados.length === 0 || !infoVehiculo}
+                disabled={sintomasSeleccionados.length === 0 || 
+                  !infoVehiculo ||
+                  guardar}
                 size="large"
                 sx={{ 
                   borderRadius: '12px',
@@ -547,6 +512,7 @@ const Diagnostico = ({
       <HistorialDiagnosticos 
         open={mostrarHistorial}
         onClose={() => setMostrarHistorial(false)}
+        grafica={grafica}
       />
     </Box>
   );

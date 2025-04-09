@@ -27,32 +27,22 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-const HistorialDiagnosticos = ({ open, onClose }) => {
+const HistorialDiagnosticos = ({ open, onClose, grafica }) => {
   const [diagnosticos, setDiagnosticos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (open) {
-      cargarDiagnosticos();
+    setDiagnosticos(grafica);
+    setLoading(false)
     }
   }, [open]);
 
-  const cargarDiagnosticos = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('http://localhost:5000/allDiagnosticos');
-      setDiagnosticos(response.data);
-    } catch (error) {
-      console.error('Error al cargar diagnósticos:', error);
-      toast.error('Error al cargar el historial de diagnósticos');
-    } finally {
-      setLoading(false);
-    }
-  };
+  console.log("Diagnósticos:", grafica);
 
   const handleEliminar = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/diagnostico/${id}`);
+      await fetch.delete(`http://localhost:5000/diagnostico/${id}`);
       setDiagnosticos(diagnosticos.filter(d => d.id !== id));
       toast.success('Diagnóstico eliminado correctamente');
     } catch (error) {
@@ -73,7 +63,7 @@ const HistorialDiagnosticos = ({ open, onClose }) => {
         return <CheckCircleIcon color="success" />;
     }
   };
-
+  
   return (
     <Dialog
       open={open}
@@ -110,7 +100,7 @@ const HistorialDiagnosticos = ({ open, onClose }) => {
           <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
             <CircularProgress />
           </Box>
-        ) : diagnosticos.length === 0 ? (
+        ) : diagnosticos === null ? (
           <Box sx={{ 
             display: 'flex', 
             flexDirection: 'column', 

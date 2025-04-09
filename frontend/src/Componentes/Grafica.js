@@ -29,19 +29,22 @@ const Grafica = ({ diagnosticos }) => {
     return <Typography variant="h6" color="text.secondary">No hay datos para mostrar en la gráfica</Typography>;
   }
 
-  console.log("Datos recibidos:", diagnosticos.severidad);
+  console.log("Datos recibidos grafica:", diagnosticos);
+  const severidades = diagnosticos.map(d => d.severidad);
+  console.log("Severidades:", severidades);
   // Preparar los datos para la gráfica
   const datos = {
-    labels: diagnosticos.map((d, index) => `Caso ${index + 1}`), // Etiquetas para cada caso
+    labels: severidades.map((_, index) => `Diagnóstico ${index + 1}`),
+    // Generar etiquetas dinámicamente basadas en el índice
     datasets: [
       {
         label: 'Severidad',
         data: diagnosticos.map(d => {
           switch (d.severidad) {
             case 'Crítica': return 4;
-            case 'Alto': return 3;
-            case 'Medio': return 2;
-            case 'Bajo': return 1;
+            case 'Alta': return 3;
+            case 'Media': return 2;
+            case 'Baja': return 1;
             default: return 0;
           }
         }),
